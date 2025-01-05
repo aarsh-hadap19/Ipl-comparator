@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'dart:io';
-import '../widgets/horizontal_stacked_bar_chart.dart';
-import '../widgets/stat_row_widget.dart';
+import '../services/player_service.dart';
+import '../widgets/player_dropdown.dart';
 import '../widgets/stats_comparision.dart';
-import '../widgets/stats_widget.dart'; // Import the file where you created the StatRowWidget
-
+import '../widgets/stats_widget.dart';
 
 class BatsmanScreen extends StatefulWidget {
   const BatsmanScreen({super.key});
@@ -18,6 +14,9 @@ class BatsmanScreen extends StatefulWidget {
 class _BatsmanScreenState extends State<BatsmanScreen> {
   String? _selectedPlayer1;
   String? _selectedPlayer2;
+
+  Map<String, dynamic>? _statsPlayer1;
+  Map<String, dynamic>? _statsPlayer2;
 
   final List<String> _players = [
     'V Kohli',
@@ -123,63 +122,16 @@ class _BatsmanScreenState extends State<BatsmanScreen> {
     'RR Rossouw'
   ];
 
-  Map<String, dynamic>? _statsPlayer1;
-  Map<String, dynamic>? _statsPlayer2;
-
-  Future<void> fetchPlayerStats(String playerName, bool isPlayer1) async {
-    try {
-      final String serverUrl = Platform.isAndroid
-          ? 'http://10.0.2.2:5000/stats'  // For Android emulator
-          : 'http://localhost:5000/stats';  // For iOS simulator or real device
-
-      final response = await http.post(
-        Uri.parse(serverUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'name': playerName}),
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          if (isPlayer1) {
-            _statsPlayer1 = jsonDecode(response.body);
-          } else {
-            _statsPlayer2 = jsonDecode(response.body);
-          }
-        });
+  Future<void> fetchPlayerStatsWrapper(String playerName, bool isPlayer1) async {
+    final stats = await fetchPlayerStats(playerName); // Call service function
+    setState(() {
+      if (isPlayer1) {
+        _statsPlayer1 = stats;
       } else {
-        setState(() {
-          if (isPlayer1) {
-            _statsPlayer1 = {'error': 'Player not found or an error occurred'};
-          } else {
-            _statsPlayer2 = {'error': 'Player not found or an error occurred'};
-          }
-        });
+        _statsPlayer2 = stats;
       }
-    } catch (e) {
-      setState(() {
-        if (isPlayer1) {
-          _statsPlayer1 = {'error': 'Failed to connect to server'};
-        } else {
-          _statsPlayer2 = {'error': 'Failed to connect to server'};
-        }
-      });
-    }
+    });
   }
-
-  // Function to calculate percentages for bar charts
-  // Map<String, double> calculateStatPercentages() {
-  //   if (_statsPlayer1 == null || _statsPlayer2 == null) return {};
-  //
-  //   double totalRuns = (_statsPlayer1!['runs'] ?? 0.0) + (_statsPlayer2!['runs'] ?? 0.0);
-  //   double totalAverage = (_statsPlayer1!['average'] ?? 0.0) + (_statsPlayer2!['average'] ?? 0.0);
-  //
-  //   return {
-  //     'runsPlayer1': (_statsPlayer1!['runs'] ?? 0.0) / totalRuns * 100,
-  //     'runsPlayer2': (_statsPlayer2!['runs'] ?? 0.0) / totalRuns * 100,
-  //     'averagePlayer1': (_statsPlayer1!['average'] ?? 0.0) / totalAverage * 100,
-  //     'averagePlayer2': (_statsPlayer2!['average'] ?? 0.0) / totalAverage * 100,
-  //   };
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -189,155 +141,39 @@ class _BatsmanScreenState extends State<BatsmanScreen> {
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
-              // Player selection UI (Dropdowns)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.grey,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.5),
-                                spreadRadius: 2,
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                              Icons.person, size: 30, color: Colors.white),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                spreadRadius: 1,
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedPlayer1,
-                              hint: const Text("Select Player 1"),
-                              isExpanded: true,
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              icon: const Icon(
-                                  Icons.arrow_drop_down, color: Colors.blue),
-                              items: _players
-                                  .where((player) => player != _selectedPlayer2)
-                                  .map((String player) {
-                                return DropdownMenuItem<String>(
-                                  value: player,
-                                  child: Text(
-                                    player,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedPlayer1 = newValue;
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: PlayerDropdown(
+                      selectedPlayer: _selectedPlayer1,
+                      players: _players,
+                      hintText: "Select Player 1",
+                      excludedPlayer: _selectedPlayer2,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedPlayer1 = newValue;
+                        });
+                      },
                     ),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.grey,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                              color: Colors.grey.withOpacity(0.5),
-                              spreadRadius: 2,
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                              Icons.person, size: 30, color: Colors.white),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.2),
-                                spreadRadius: 1,
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedPlayer2,
-                              hint: const Text("Select Player 2"),
-                              isExpanded: true,
-                              style: const TextStyle(
-                                color: Colors.black87,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              icon: const Icon(
-                                  Icons.arrow_drop_down, color: Colors.blue),
-                              items: _players
-                                  .where((player) => player != _selectedPlayer1)
-                                  .map((String player) {
-                                return DropdownMenuItem<String>(
-                                  value: player,
-                                  child: Text(
-                                    player,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedPlayer2 = newValue;
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: PlayerDropdown(
+                      selectedPlayer: _selectedPlayer2,
+                      players: _players,
+                      hintText: "Select Player 2",
+                      excludedPlayer: _selectedPlayer1,
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedPlayer2 = newValue;
+                        });
+                      },
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 20),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -349,24 +185,15 @@ class _BatsmanScreenState extends State<BatsmanScreen> {
                 ),
                 onPressed: () {
                   if (_selectedPlayer1 != null) {
-                    fetchPlayerStats(_selectedPlayer1!, true);
+                    fetchPlayerStatsWrapper(_selectedPlayer1!, true);
                   }
                   if (_selectedPlayer2 != null) {
-                    fetchPlayerStats(_selectedPlayer2!, false);
+                    fetchPlayerStatsWrapper(_selectedPlayer2!, false);
                   }
                 },
-                child: const Text(
-                  "Simulate",
-                  style: TextStyle(fontSize: 16),
-                ),
+                child: const Text("Simulate"),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Stats',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              // Replace the Row containing PlayerStatsWidget instances with this:
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -390,9 +217,6 @@ class _BatsmanScreenState extends State<BatsmanScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 20),
-              // This part should be a part of the widget tree
-              // Remove the existing stats widgets and replace with:
               if (_statsPlayer1 != null && _statsPlayer2 != null)
                 StatsComparisonTable(
                   statsPlayer1: _statsPlayer1,

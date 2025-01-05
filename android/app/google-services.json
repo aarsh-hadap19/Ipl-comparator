@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "377548438447",
+    "project_id": "ipl-comparator",
+    "storage_bucket": "ipl-comparator.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:377548438447:android:aa7aa69302ef0f5a820d5a",
+        "android_client_info": {
+          "package_name": "com.example.batflask"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCLwZcj_iCwxc0kz3iQRnTcF31lG_70Lw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
