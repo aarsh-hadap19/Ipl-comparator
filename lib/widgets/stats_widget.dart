@@ -1,6 +1,9 @@
+// player_stats_widget.dart
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../services/firebase_service.dart';
 
-class PlayerStatsWidget extends StatelessWidget {
+class PlayerStatsWidget extends StatefulWidget {
   final Map<String, dynamic>? stats;
   final String playerName;
   final Color playerColor;
@@ -13,164 +16,105 @@ class PlayerStatsWidget extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<PlayerStatsWidget> createState() => _PlayerStatsWidgetState();
+}
+
+class _PlayerStatsWidgetState extends State<PlayerStatsWidget> {
+  final FirebaseService _firebaseService = FirebaseService();
+  String? imageUrl;
+  String? displayName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlayerData();
+  }
+
+  @override
+  void didUpdateWidget(PlayerStatsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.playerName != oldWidget.playerName) {
+      _loadPlayerData();
+    }
+  }
+
+  Future<void> _loadPlayerData() async {
+    if (mounted) {
+      setState(() {
+        imageUrl = null;
+        displayName = null;
+      });
+
+      final playerData = await _firebaseService.getPlayerData(widget.playerName);
+
+      if (mounted) {
+        setState(() {
+          imageUrl = playerData['imgUrl'];
+          displayName = playerData['name'];
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Player Icon with 3D effect
-        Container(
+        // Player Image with 3D effect
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: playerColor,
+            color: widget.playerColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: playerColor.withOpacity(0.5),
+                color: widget.playerColor.withOpacity(0.5),
                 spreadRadius: 2,
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.person,
-            color: Colors.white,
-            size: 40,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: imageUrl != null && imageUrl!.isNotEmpty
+                ? CachedNetworkImage(
+              imageUrl: imageUrl!,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 40,
+              ),
+              errorWidget: (context, url, error) => const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 40,
+              ),
+            )
+                : const Icon(
+              Icons.person,
+              color: Colors.white,
+              size: 40,
+            ),
           ),
         ),
         const SizedBox(height: 12),
-        // Player Name
-        Text(
-          playerName,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+        // Player Name with Animation
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: Text(
+            displayName ?? widget.playerName,
+            key: ValueKey(displayName ?? widget.playerName),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class ComparisonStatsTable extends StatelessWidget {
-  final Map<String, dynamic>? statsPlayer1;
-  final Map<String, dynamic>? statsPlayer2;
-  final String player1Name;
-  final String player2Name;
-
-  const ComparisonStatsTable({
-    Key? key,
-    required this.statsPlayer1,
-    required this.statsPlayer2,
-    required this.player1Name,
-    required this.player2Name,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          // Player Icons Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              PlayerStatsWidget(
-                stats: statsPlayer1,
-                playerName: player1Name,
-                playerColor: Colors.blue,
-              ),
-              PlayerStatsWidget(
-                stats: statsPlayer2,
-                playerName: player2Name,
-                playerColor: Colors.purple,
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          // Stats Comparison Table
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 0,
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _buildStatRow('Innings', statsPlayer1?['Innings'], statsPlayer2?['Innings']),
-                _buildStatRow('Runs', statsPlayer1?['Runs'], statsPlayer2?['Runs']),
-                _buildStatRow('Average', statsPlayer1?['Average'], statsPlayer2?['Average']),
-                _buildStatRow('Centuries', statsPlayer1?['Centuries'], statsPlayer2?['Centuries']),
-                _buildStatRow('Ducks', statsPlayer1?['Ducks'], statsPlayer2?['Ducks']),
-                _buildStatRow('Fours', statsPlayer1?['Fours'], statsPlayer2?['Fours']),
-                _buildStatRow('Sixes', statsPlayer1?['Sixes'], statsPlayer2?['Sixes']),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, dynamic value1, dynamic value2) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Stat Label
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
-              ),
-            ),
-          ),
-          // Player 1 Value
-          Expanded(
-            flex: 1,
-            child: Text(
-              value1?.toString() ?? '-',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          // Player 2 Value
-          Expanded(
-            flex: 1,
-            child: Text(
-              value2?.toString() ?? '-',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

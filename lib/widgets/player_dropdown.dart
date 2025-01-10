@@ -1,6 +1,9 @@
+// player_dropdown.dart
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../services/firebase_service.dart';
 
-class PlayerDropdown extends StatelessWidget {
+class PlayerDropdown extends StatefulWidget {
   final String? selectedPlayer;
   final List<String> players;
   final String hintText;
@@ -15,6 +18,39 @@ class PlayerDropdown extends StatelessWidget {
     required this.onChanged,
     this.excludedPlayer,
   }) : super(key: key);
+
+  @override
+  State<PlayerDropdown> createState() => _PlayerDropdownState();
+}
+
+class _PlayerDropdownState extends State<PlayerDropdown> {
+  final FirebaseService _firebaseService = FirebaseService();
+  String? imageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selectedPlayer != null) {
+      _loadPlayerImage();
+    }
+  }
+
+  @override
+  void didUpdateWidget(PlayerDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selectedPlayer != oldWidget.selectedPlayer) {
+      _loadPlayerImage();
+    }
+  }
+
+  Future<void> _loadPlayerImage() async {
+    if (widget.selectedPlayer != null) {
+      final playerData = await _firebaseService.getPlayerData(widget.selectedPlayer!);
+      setState(() {
+        imageUrl = playerData['imgUrl'];
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +71,23 @@ class PlayerDropdown extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.person, size: 30, color: Colors.white),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: imageUrl != null
+                ? CachedNetworkImage(
+              imageUrl: imageUrl!,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => const Center(
+                child: CircularProgressIndicator(),
+              ),
+              errorWidget: (context, url, error) => const Icon(
+                Icons.person,
+                size: 30,
+                color: Colors.white,
+              ),
+            )
+                : const Icon(Icons.person, size: 30, color: Colors.white),
+          ),
         ),
         const SizedBox(height: 8),
         Container(
@@ -55,8 +107,8 @@ class PlayerDropdown extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: selectedPlayer,
-              hint: Text(hintText),
+              value: widget.selectedPlayer,
+              hint: Text(widget.hintText),
               isExpanded: true,
               style: const TextStyle(
                 color: Colors.black87,
@@ -64,8 +116,8 @@ class PlayerDropdown extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
               icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
-              items: players
-                  .where((player) => player != excludedPlayer)
+              items: widget.players
+                  .where((player) => player != widget.excludedPlayer)
                   .map((String player) {
                 return DropdownMenuItem<String>(
                   value: player,
@@ -75,7 +127,7 @@ class PlayerDropdown extends StatelessWidget {
                   ),
                 );
               }).toList(),
-              onChanged: onChanged,
+              onChanged: widget.onChanged,
             ),
           ),
         ),

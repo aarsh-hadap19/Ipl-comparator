@@ -24,7 +24,7 @@ class _BatsmanScreenState extends State<BatsmanScreen> {
     "KL Rahul", "Ajinkya Rahane", "Faf du Plessis", "S Samson",
     "A Rayudu", "Shane Watson", "Manish Pandey", "Surya Kumar Yadav",
     "Jos Buttler", "K Pollard", "R Pant", "Shubman Gill",
-    "Q de Kock", "S Iyer", "R Jadeja", "W Saha", "David Miller",
+    "Q de Kock", "S Iyer", "R Jadeja", "W Saha", "David Miller",//till here updated in firebase
     "Glenn Maxwell", "M Agarwal", "Ishan Kishan", "N Rana",
     "M Vijay", "H Pandya", "S Smith", "Andre Russell",
     "R Gaikwad", "R Tripathi", "Kane Williamson", "Aaron Finch",
